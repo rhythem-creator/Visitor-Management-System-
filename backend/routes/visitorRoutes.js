@@ -2,12 +2,16 @@
 const express = require('express');
 const router = express.Router();
 
-let protect = (req, res, next) => next();
-try { protect = require('../middleware/authMiddleware').protect; } catch (_) {}
+// auth middleware
+const { protect } = require('../middleware/authMiddleware');
 
-const { addVisitor } = require('../controllers/visitorController'); // or visitorCreateController if you split
+// controller functions
+const { addVisitor, getVisitors } = require('../controllers/visitorController');
 
-// ONLY the create endpoint for VM‑4
+// VM‑4 (Create)
 router.post('/', protect, addVisitor);
+
+// VM‑5 (List)
+router.get('/', protect, getVisitors);
 
 module.exports = router;
