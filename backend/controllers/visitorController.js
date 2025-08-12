@@ -72,9 +72,34 @@ const updateVisitor = async (req, res) => {
   }
 };
 
+// DELETE /api/visitors/:id  (VM-7)
+const deleteVisitor = async (req, res) => {
+  const { id } = req.params;
+
+  // Validate ObjectId so we don't crash on bad IDs
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: 'Invalid visitor id' });
+  }
+
+  try {
+    // if you have auth, make sure the record belongs to this user
+    const filter = req.user ? { _id: id, userId: req.user.id } : { _id: id };
+
+    const deleted = await Visitor.findOneAndDelete(filter);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Visitor not found' });
+    }
+
+    res.json({ message: 'Visitor deleted', id: deleted._id });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 
 module.exports = {
   addVisitor,
   getVisitors,
   updateVisitor,
+  deleteVisitor,
 };

@@ -6,7 +6,7 @@ const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 
 // controller functions
-const { addVisitor, getVisitors, updateVisitor} = require('../controllers/visitorController');
+const { addVisitor, getVisitors, updateVisitor, deleteVisitor,} = require('../controllers/visitorController');
 
 // VM‑4 (Create)
 router.post('/', protect, addVisitor);
@@ -16,5 +16,8 @@ router.get('/', protect, getVisitors);
 
 // VM-6: update by id
 router.put('/:id', protect, updateVisitor);
+
+// VM-7 (Delete)
+router.delete('/:id', protect, deleteVisitor);
 
 module.exports = router;
