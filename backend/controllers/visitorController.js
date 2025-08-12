@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 // backend/controllers/visitorController.js
 const Visitor = require('../models/Visitor');
 
@@ -38,7 +39,42 @@ const getVisitors = async (req, res) => {
   }
 };
 
+/**
+ * PUT /api/visitors/:id
+ * Update a visitor (only fields sent will be changed)
+ */
+const updateVisitor = async (req, res) => {
+  const { id } = req.params;
+
+  // safety on bad ids
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: 'Invalid visitor id' });
+  }
+
+  try {
+    const v = await Visitor.findById(id);
+    if (!v) return res.status(404).json({ message: 'Visitor not found' });
+
+    const { name, phone, purpose, host, checkIn, checkOut, status } = req.body;
+
+    if (name !== undefined) v.name = name;
+    if (phone !== undefined) v.phone = phone;
+    if (purpose !== undefined) v.purpose = purpose;
+    if (host !== undefined) v.host = host;
+    if (checkIn !== undefined) v.checkIn = checkIn ? new Date(checkIn) : undefined;
+    if (checkOut !== undefined) v.checkOut = checkOut ? new Date(checkOut) : undefined;
+    if (status !== undefined) v.status = status; // 'In' | 'Out'
+
+    const updated = await v.save();
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 module.exports = {
   addVisitor,
   getVisitors,
+  updateVisitor,
 };
