@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
 import VisitorsAdd from './pages/VisitorsAdd';
 import VisitorsList from './pages/VisitorsList'; // ok if this exists; otherwise remove this line + route
+import VisitorsEdit from './pages/VisitorsEdit';
 
 export default function App() {
   return (
@@ -61,6 +62,14 @@ export default function App() {
             </PrivateRoute>
           }
         />
+        <Route
+  path="/visitors/:id/edit"
+  element={
+    <PrivateRoute>
+      <VisitorsEdit />
+    </PrivateRoute>
+  }
+/>
 
         {/* Catch‑all -> login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
