@@ -1,10 +1,15 @@
-
-
 // src/pages/VisitorsAdd.jsx
 import { useState } from 'react';
 import api from '../api/axiosConfig';
 
-const initial = { name: '', phone: '', purpose: '', host: '', checkIn: '', status: 'In' };
+const initial = {
+  name: '',
+  phone: '',
+  purpose: '',
+  host: '',
+  checkIn: '',
+  status: 'In',
+};
 
 export default function VisitorsAdd() {
   const [form, setForm] = useState(initial);
@@ -12,33 +17,36 @@ export default function VisitorsAdd() {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
 
+  // keep digits-only phone, max 15
   const onChange = (e) => {
     const { name, value } = e.target;
-
     if (name === 'phone') {
-      // allow only digits, max 15
       const digits = value.replace(/\D/g, '').slice(0, 15);
       setForm((f) => ({ ...f, phone: digits }));
       return;
     }
-
     setForm((f) => ({ ...f, [name]: value }));
   };
 
+  // basic client validation
   const validate = () => {
     const e = {};
 
-    // Name: at least 2 letters
+    // name: at least 2 letters, allow spaces and .'- characters
     if (!form.name.trim()) e.name = 'Name is required';
-    else if (!/^[\p{L} .'-]{2,}$/u.test(form.name.trim())) e.name = 'Please enter a valid name';
+    else if (!/^[A-Za-z][A-Za-z .'\-]{1,}$/.test(form.name.trim()))
+      e.name = 'Please enter a valid name';
 
-    // Phone: 10–15 digits
+    // phone: 10–15 digits
     if (!form.phone.trim()) e.phone = 'Phone is required';
-    else if (!/^\d{10,15}$/.test(form.phone)) e.phone = 'Phone must be 10–15 digits';
+    else if (!/^\d{10,15}$/.test(form.phone))
+      e.phone = 'Phone must be 10–15 digits';
 
+    // purpose + host: required
     if (!form.purpose.trim()) e.purpose = 'Purpose is required';
     if (!form.host.trim()) e.host = 'Host is required';
 
+    // checkIn: optional, but if provided it must be a valid datetime
     if (form.checkIn) {
       const dt = new Date(form.checkIn);
       if (Number.isNaN(dt.getTime())) e.checkIn = 'Invalid date/time';
@@ -82,6 +90,7 @@ export default function VisitorsAdd() {
       )}
 
       <form onSubmit={onSubmit} className="bg-white p-6 shadow rounded">
+        {/* Name */}
         <label className="block mb-3">
           <span className="block mb-1">Name</span>
           <input
@@ -94,6 +103,7 @@ export default function VisitorsAdd() {
           {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
         </label>
 
+        {/* Phone */}
         <label className="block mb-3">
           <span className="block mb-1">Phone</span>
           <input
@@ -108,6 +118,7 @@ export default function VisitorsAdd() {
           {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
         </label>
 
+        {/* Purpose */}
         <label className="block mb-3">
           <span className="block mb-1">Purpose</span>
           <input
@@ -115,10 +126,12 @@ export default function VisitorsAdd() {
             value={form.purpose}
             onChange={onChange}
             className={`w-full p-2 border rounded ${errors.purpose ? 'border-red-400' : ''}`}
+            placeholder="Purpose of visit"
           />
           {errors.purpose && <p className="text-red-600 text-sm mt-1">{errors.purpose}</p>}
         </label>
 
+        {/* Host */}
         <label className="block mb-3">
           <span className="block mb-1">Host</span>
           <input
@@ -126,12 +139,14 @@ export default function VisitorsAdd() {
             value={form.host}
             onChange={onChange}
             className={`w-full p-2 border rounded ${errors.host ? 'border-red-400' : ''}`}
+            placeholder="Person to meet"
           />
           {errors.host && <p className="text-red-600 text-sm mt-1">{errors.host}</p>}
         </label>
 
+        {/* Check-in (optional) */}
         <label className="block mb-4">
-          <span className="block mb-1">Check‑in (optional)</span>
+          <span className="block mb-1">Check-in (optional)</span>
           <input
             type="datetime-local"
             name="checkIn"
@@ -142,6 +157,7 @@ export default function VisitorsAdd() {
           {errors.checkIn && <p className="text-red-600 text-sm mt-1">{errors.checkIn}</p>}
         </label>
 
+        {/* Status */}
         <div className="flex items-center gap-6 mb-4">
           <label className="flex items-center gap-2">
             <input
