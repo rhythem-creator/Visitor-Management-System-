@@ -6,6 +6,7 @@ export default function VisitorsList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [q, setQ] = useState('');
 
   useEffect(() => {
     let alive = true;
@@ -32,11 +33,28 @@ export default function VisitorsList() {
     return () => { alive = false; };
   }, []);
 
+  const filtered = rows.filter((v) =>
+    [
+      v?.name, v?.phone, v?.purpose, v?.host, v?.status, v?.checkIn,
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(q.toLowerCase())
+  );
+
   if (loading) return <div className="p-6 text-gray-700">Loading…</div>;
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Visitors</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Visitors</h1>
+        <input
+          className="w-72 border rounded px-3 py-2"
+          placeholder="Search name, phone, host, purpose..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
 
       {error && (
         <div className="mb-4 bg-red-50 border border-red-300 text-red-800 px-3 py-2 rounded">
@@ -44,7 +62,7 @@ export default function VisitorsList() {
         </div>
       )}
 
-      {!error && rows.length === 0 ? (
+      {!error && filtered.length === 0 ? (
         <div className="text-gray-600">No visitors found.</div>
       ) : (
         <div className="overflow-x-auto rounded border bg-white">
@@ -60,7 +78,7 @@ export default function VisitorsList() {
               </tr>
             </thead>
             <tbody className="text-sm">
-              {rows.map((v, i) => (
+              {filtered.map((v, i) => (
                 <tr key={v.id ?? i} className="border-t">
                   <td className="px-4 py-3">{v?.name ?? '—'}</td>
                   <td className="px-4 py-3">{v?.phone ?? '—'}</td>
