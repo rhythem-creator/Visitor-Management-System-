@@ -1,24 +1,43 @@
 // src/context/AuthContext.js
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../api/axiosConfig';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const saved = localStorage.getItem('user');
-  const [user, setUser] = useState(saved ? JSON.parse(saved) : null);
+  const [user, setUser] = useState(null);
+  const [ready, setReady] = useState(false);
+
+  // Rehydrate session on first mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      if (saved) setUser(JSON.parse(saved));
+    } catch (_) {
+      // ignore bad JSON
+    } finally {
+      setReady(true); // render app only after we check storage
+    }
+  }, []);
 
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
-    const packed = { name: data.name, email: data.email, token: data.token };
+    // shape a predictable user object
+    const packed = {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      token: data.token,
+    };
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(packed));
     setUser(packed);
+    return packed;
   };
 
   const register = async (name, email, password) => {
     const { data } = await api.post('/auth/register', { name, email, password });
-    return data; // keep flow simple: page redirects to /login after success
+    return data;
   };
 
   const logout = () => {
@@ -27,8 +46,10 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  if (!ready) return null; // prevent PrivateRoute from flashing before we load
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthed: !!user?.token, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

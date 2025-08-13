@@ -9,20 +9,22 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
 import VisitorsAdd from './pages/VisitorsAdd';
+import VisitorsList from './pages/VisitorsList'; // ok if this exists; otherwise remove this line + route
 
 export default function App() {
   return (
     <Router>
       <Navbar />
+
       <Routes>
-        {/* public */}
+        {/* Public */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* default → visitors/new */}
+        {/* Default -> /visitors/new */}
         <Route path="/" element={<Navigate to="/visitors/new" replace />} />
 
-        {/* protected */}
+        {/* Protected */}
         <Route
           path="/profile"
           element={
@@ -31,6 +33,7 @@ export default function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/tasks"
           element={
@@ -39,6 +42,7 @@ export default function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/visitors/new"
           element={
@@ -48,7 +52,17 @@ export default function App() {
           }
         />
 
-        {/* catch-all */}
+        {/* Optional list page (VM‑9). Remove if you don’t have it yet. */}
+        <Route
+          path="/visitors"
+          element={
+            <PrivateRoute>
+              <VisitorsList />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Catch‑all -> login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
