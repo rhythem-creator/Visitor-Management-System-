@@ -1,32 +1,28 @@
-// src/App.js (minimal for VM‑8)
+// src/App.js
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
+
+import Navbar from './components/Navbar';
 import PrivateRoute from './components/PrivateRoute';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
-import VisitorsAdd from './pages/VisitorsAdd';
 import Profile from './pages/Profile';
+import Tasks from './pages/Tasks';
+import VisitorsAdd from './pages/VisitorsAdd';
 
-function App() {
-  const { user } = useAuth();
-
+export default function App() {
   return (
     <Router>
+      <Navbar />
       <Routes>
         {/* public */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
+        {/* default → visitors/new */}
+        <Route path="/" element={<Navigate to="/visitors/new" replace />} />
+
         {/* protected */}
-        <Route
-          path="/visitors/new"
-          element={
-            <PrivateRoute>
-              <VisitorsAdd />
-            </PrivateRoute>
-          }
-        />
         <Route
           path="/profile"
           element={
@@ -35,18 +31,26 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/tasks"
+          element={
+            <PrivateRoute>
+              <Tasks />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/visitors/new"
+          element={
+            <PrivateRoute>
+              <VisitorsAdd />
+            </PrivateRoute>
+          }
+        />
 
-        {/* default / catch‑all */}
-        <Route
-          path="/"
-          element={user?.token ? <Navigate to="/visitors/new" replace /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="*"
-          element={user?.token ? <Navigate to="/visitors/new" replace /> : <Navigate to="/login" replace />}
-        />
+        {/* catch-all */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );
 }
-export default App;
