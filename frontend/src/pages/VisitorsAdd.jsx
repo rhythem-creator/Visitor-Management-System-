@@ -2,22 +2,16 @@
 import { useState } from 'react';
 import api from '../api/axiosConfig';
 
-const initial = {
-  name: '',
-  phone: '',
-  purpose: '',
-  host: '',
-  checkIn: '',
-  status: 'In',
-};
+const initial = { name: '', phone: '', purpose: '', host: '', checkIn: '', status: 'In' };
 
 export default function VisitorsAdd() {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  // keep digits-only phone, max 15
+  // keep your onChange behavior (digits only for phone)
   const onChange = (e) => {
     const { name, value } = e.target;
     if (name === 'phone') {
@@ -28,25 +22,27 @@ export default function VisitorsAdd() {
     setForm((f) => ({ ...f, [name]: value }));
   };
 
-  // basic client validation
+  // your original validation (name, phone 10–15, purpose, host, optional valid checkIn)
   const validate = () => {
     const e = {};
 
-    // name: at least 2 letters, allow spaces and .'- characters
-    if (!form.name.trim()) e.name = 'Name is required';
-    else if (!/^[A-Za-z][A-Za-z .'\-]{1,}$/.test(form.name.trim()))
+    // Name: at least 2 letters, letters/spaces/.-'
+    if (!form.name.trim()) {
+      e.name = 'Name is required';
+    } else if (!/^[^\p{L}\s'.-]*[\p{L}\s'.-]{2,}$/u.test(form.name.trim())) {
       e.name = 'Please enter a valid name';
+    }
 
-    // phone: 10–15 digits
-    if (!form.phone.trim()) e.phone = 'Phone is required';
-    else if (!/^\d{10,15}$/.test(form.phone))
+    // Phone: 10–15 digits
+    if (!form.phone.trim()) {
+      e.phone = 'Phone is required';
+    } else if (!/^\d{10,15}$/.test(form.phone)) {
       e.phone = 'Phone must be 10–15 digits';
+    }
 
-    // purpose + host: required
     if (!form.purpose.trim()) e.purpose = 'Purpose is required';
     if (!form.host.trim()) e.host = 'Host is required';
 
-    // checkIn: optional, but if provided it must be a valid datetime
     if (form.checkIn) {
       const dt = new Date(form.checkIn);
       if (Number.isNaN(dt.getTime())) e.checkIn = 'Invalid date/time';
@@ -59,12 +55,13 @@ export default function VisitorsAdd() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
+    setSuccess('');
     if (!validate()) return;
 
     try {
       setSubmitting(true);
       await api.post('/visitors', form);
-      alert('Visitor created!');
+      setSuccess('Visitor created successfully.');
       setForm(initial);
       setErrors({});
     } catch (err) {
@@ -79,6 +76,10 @@ export default function VisitorsAdd() {
     }
   };
 
+  const inputBase =
+    'w-full p-2 border rounded focus:outline-none focus:ring disabled:opacity-60';
+  const errText = 'text-red-600 text-sm mt-1';
+
   return (
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Add Visitor</h1>
@@ -86,6 +87,11 @@ export default function VisitorsAdd() {
       {apiError && (
         <div className="mb-4 bg-red-50 border border-red-300 text-red-800 px-3 py-2 rounded">
           {apiError}
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 bg-green-50 border border-green-300 text-green-800 px-3 py-2 rounded">
+          {success}
         </div>
       )}
 
@@ -97,10 +103,10 @@ export default function VisitorsAdd() {
             name="name"
             value={form.name}
             onChange={onChange}
-            className={`w-full p-2 border rounded ${errors.name ? 'border-red-400' : ''}`}
             placeholder="Full name"
+            className={`${inputBase} ${errors.name ? 'border-red-400' : ''}`}
           />
-          {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
+          {errors.name && <p className={errText}>{errors.name}</p>}
         </label>
 
         {/* Phone */}
@@ -112,10 +118,10 @@ export default function VisitorsAdd() {
             onChange={onChange}
             inputMode="numeric"
             pattern="\d*"
-            className={`w-full p-2 border rounded ${errors.phone ? 'border-red-400' : ''}`}
             placeholder="e.g. 0412345678"
+            className={`${inputBase} ${errors.phone ? 'border-red-400' : ''}`}
           />
-          {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
+          {errors.phone && <p className={errText}>{errors.phone}</p>}
         </label>
 
         {/* Purpose */}
@@ -125,10 +131,9 @@ export default function VisitorsAdd() {
             name="purpose"
             value={form.purpose}
             onChange={onChange}
-            className={`w-full p-2 border rounded ${errors.purpose ? 'border-red-400' : ''}`}
-            placeholder="Purpose of visit"
+            className={`${inputBase} ${errors.purpose ? 'border-red-400' : ''}`}
           />
-          {errors.purpose && <p className="text-red-600 text-sm mt-1">{errors.purpose}</p>}
+          {errors.purpose && <p className={errText}>{errors.purpose}</p>}
         </label>
 
         {/* Host */}
@@ -138,26 +143,25 @@ export default function VisitorsAdd() {
             name="host"
             value={form.host}
             onChange={onChange}
-            className={`w-full p-2 border rounded ${errors.host ? 'border-red-400' : ''}`}
-            placeholder="Person to meet"
+            className={`${inputBase} ${errors.host ? 'border-red-400' : ''}`}
           />
-          {errors.host && <p className="text-red-600 text-sm mt-1">{errors.host}</p>}
+          {errors.host && <p className={errText}>{errors.host}</p>}
         </label>
 
         {/* Check-in (optional) */}
         <label className="block mb-4">
-          <span className="block mb-1">Check-in (optional)</span>
+          <span className="block mb-1">Check‑in (optional)</span>
           <input
             type="datetime-local"
             name="checkIn"
             value={form.checkIn}
             onChange={onChange}
-            className={`w-full p-2 border rounded ${errors.checkIn ? 'border-red-400' : ''}`}
+            className={`${inputBase} ${errors.checkIn ? 'border-red-400' : ''}`}
           />
-          {errors.checkIn && <p className="text-red-600 text-sm mt-1">{errors.checkIn}</p>}
+          {errors.checkIn && <p className={errText}>{errors.checkIn}</p>}
         </label>
 
-        {/* Status */}
+        {/* Status radio */}
         <div className="flex items-center gap-6 mb-4">
           <label className="flex items-center gap-2">
             <input
