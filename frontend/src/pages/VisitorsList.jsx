@@ -1,115 +1,76 @@
-// frontend/src/pages/VisitorsList.jsx
+// VM-11.1 version (fixed)
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
+
+const fmt = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return '—';
+  return dt.toLocaleString();
+};
 
 export default function VisitorsList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // NEW (VM-11.1): UI state for confirm modal only
+  const [confirmId, setConfirmId] = useState(null);
 
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  // read initial query from URL so it persists across page changes/refresh
-  const initialQ = searchParams.get('q') ?? '';
-  const [q, setQ] = useState(initialQ);
-
+  // fetch list
   useEffect(() => {
-    let mounted = true;
+    let alive = true;
     (async () => {
       try {
+        setLoading(true);
+        setError('');
         const { data } = await api.get('/visitors');
-        if (!mounted) return;
+        if (!alive) return;
         setRows(Array.isArray(data) ? data : []);
+      } catch (err) {
+        if (!alive) return;
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message || 'Failed to load visitors';
+        setError(msg);
       } finally {
-        if (mounted) setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => { alive = false; };
   }, []);
 
-  // keep URL in sync with the search box (so going to Edit and back keeps the query)
-  useEffect(() => {
-    const next = new URLSearchParams(searchParams);
-    if (q) next.set('q', q);
-    else next.delete('q');
-    // only replace if something actually changed
-    if (next.toString() !== searchParams.toString()) {
-      setSearchParams(next, { replace: true });
-    }
-  }, [q, searchParams, setSearchParams]);
-
-  // flash banner after successful update
+  // flash banner support
   const flash = location.state?.flash;
   useEffect(() => {
     if (!flash) return;
     const t = setTimeout(() => {
-      navigate(location.pathname + (q ? `?q=${encodeURIComponent(q)}` : ''), { replace: true, state: {} });
+      navigate(location.pathname, { replace: true, state: {} });
     }, 2500);
     return () => clearTimeout(t);
-  }, [flash, location.pathname, navigate, q]);
+  }, [flash, location.pathname, navigate]);
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return rows;
-    return rows.filter((v) => {
-      const name = (v.name ?? '').toLowerCase();
-      const phone = (v.phone ?? '').toLowerCase();
-      const purpose = (v.purpose ?? '').toLowerCase();
-      const host = (v.host ?? '').toLowerCase();
-      const status = (v.status ?? '').toLowerCase();
-      return (
-        name.includes(needle) ||
-        phone.includes(needle) ||
-        purpose.includes(needle) ||
-        host.includes(needle) ||
-        status.includes(needle)
-      );
-    });
-  }, [rows, q]);
+  const table = useMemo(() => rows, [rows]);
 
-  if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-4">Visitors</h1>
-        <div className="text-gray-600">Loading…</div>
-      </div>
-    );
-  }
+  // VM-11.1: open/close confirm
+  const askDelete = (id) => setConfirmId(id);
+  const closeConfirm = () => setConfirmId(null);
+  // VM-11.1: placeholder confirm action (no API yet)
+  const confirmDeleteNow = () => {
+    // no API yet; just close dialog
+    setConfirmId(null);
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-4 gap-3">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Visitors</h1>
-        <div className="flex items-center gap-2">
-          {/* Search box */}
-          <div className="relative">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search name, phone, purpose…"
-              aria-label="Search visitors"
-              className="w-64 md:w-80 p-2 pr-8 border rounded"
-            />
-            {/* clear button */}
-            {q && (
-              <button
-                type="button"
-                onClick={() => setQ('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                aria-label="Clear search"
-                title="Clear"
-              >
-                ×
-              </button>
-            )}
-          </div>
-
-          <Link to="/visitors/new" className="text-blue-600 underline whitespace-nowrap">
-            Add Visitor
-          </Link>
-        </div>
+        <Link to="/visitors/new" className="text-blue-600 underline">Add Visitor</Link>
       </div>
 
       {flash && (
@@ -118,57 +79,97 @@ export default function VisitorsList() {
         </div>
       )}
 
-      {filtered.length === 0 ? (
-        <div className="text-gray-600">
-          {q ? 'No matching visitors.' : 'No visitors yet.'}
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-300 text-red-800 px-3 py-2 rounded">
+          {error}
         </div>
+      )}
+
+      {loading ? (
+        <div className="text-gray-600">Loading…</div>
+      ) : table.length === 0 ? (
+        <div className="text-gray-600">No visitors yet.</div>
       ) : (
-        <div className="overflow-x-auto bg-white shadow rounded">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto bg-white rounded shadow">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-gray-700">
               <tr>
-                <th className="text-left p-3">Name</th>
-                <th className="text-left p-3">Phone</th>
-                <th className="text-left p-3">Purpose</th>
-                <th className="text-left p-3">Host</th>
-                <th className="text-left p-3">Check-in</th>
-                <th className="text-left p-3">Status</th>
-                <th className="text-left p-3">Actions</th>
+                <th className="text-left px-4 py-2">Name</th>
+                <th className="text-left px-4 py-2">Phone</th>
+                <th className="text-left px-4 py-2">Purpose</th>
+                <th className="text-left px-4 py-2">Host</th>
+                <th className="text-left px-4 py-2">Check-in</th>
+                <th className="text-left px-4 py-2">Status</th>
+                <th className="text-left px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((v) => (
-                <tr key={v._id || v.id} className="border-t">
-                  <td className="p-3">{v.name}</td>
-                  <td className="p-3">{v.phone}</td>
-                  <td className="p-3">{v.purpose}</td>
-                  <td className="p-3">{v.host}</td>
-                  <td className="p-3">{v.checkIn ? new Date(v.checkIn).toLocaleString() : '—'}</td>
-                  <td className="p-3">
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs ${
-                        v.status === 'Out' ? 'bg-gray-200 text-gray-800' : 'bg-green-200 text-green-800'
-                      }`}
-                    >
-                      {v.status === 'Out' ? 'Out' : 'In'}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <Link
-                      className="text-blue-600 underline"
-                      to={`/visitors/${v._id || v.id}/edit`}
-                      state={{ visitor: v }}
-                    >
-                      Edit
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {table.map((v) => {
+                const id = v._id ?? v.id ?? v.uuid;
+                return (
+                  <tr key={id} className="border-t">
+                    <td className="px-4 py-2">
+                      <Link
+                        to={`/visitors/${id}/edit`}
+                        state={{ visitor: v }}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {v.name || '—'}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2">{v.phone || '—'}</td>
+                    <td className="px-4 py-2">{v.purpose || '—'}</td>
+                    <td className="px-4 py-2">{v.host || '—'}</td>
+                    <td className="px-4 py-2">{fmt(v.checkIn)}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs ${
+                          v.status === 'In'
+                            ? 'bg-green-200 text-green-800'
+                            : 'bg-gray-200 text-gray-800'
+                        }`}
+                      >
+                        {v.status || '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-3">
+                        <Link
+                          to={`/visitors/${id}/edit`}
+                          state={{ visitor: v }}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => askDelete(id)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-          {/* small count helper */}
-          <div className="p-3 text-xs text-gray-600 border-t">
-            Showing {filtered.length} of {rows.length}
+        </div>
+      )}
+
+      {/* VM-11.1: confirm modal only */}
+      {confirmId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded shadow p-6 w-[90%] max-w-md">
+            <h2 className="text-lg font-semibold mb-2">Delete visitor?</h2>
+            <p className="mb-4 text-sm text-gray-600">This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={closeConfirm} className="px-4 py-2 border rounded">Cancel</button>
+              <button onClick={confirmDeleteNow} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">
+                Confirm delete
+              </button>
+            </div>
           </div>
         </div>
       )}
