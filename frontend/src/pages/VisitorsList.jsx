@@ -1,4 +1,4 @@
-// VM-11.1 version (fixed)
+// VM-11.2 version
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
@@ -15,37 +15,34 @@ export default function VisitorsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // NEW (VM-11.1): UI state for confirm modal only
+  // confirm + delete states
   const [confirmId, setConfirmId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const location = useLocation();
   const navigate = useNavigate();
 
-  // fetch list
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        setError('');
-        const { data } = await api.get('/visitors');
-        if (!alive) return;
-        setRows(Array.isArray(data) ? data : []);
-      } catch (err) {
-        if (!alive) return;
-        const msg =
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err?.message || 'Failed to load visitors';
-        setError(msg);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
+  // fetch list factored so we can re-use after delete
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const { data } = await api.get('/visitors');
+      setRows(Array.isArray(data) ? data : []);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message || 'Failed to load visitors';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // flash banner support
+  useEffect(() => { (async () => { await load(); })(); }, []);
+
   const flash = location.state?.flash;
   useEffect(() => {
     if (!flash) return;
@@ -57,14 +54,35 @@ export default function VisitorsList() {
 
   const table = useMemo(() => rows, [rows]);
 
-  // VM-11.1: open/close confirm
   const askDelete = (id) => setConfirmId(id);
   const closeConfirm = () => setConfirmId(null);
-  // VM-11.1: placeholder confirm action (no API yet)
-  const confirmDeleteNow = () => {
-    // no API yet; just close dialog
-    setConfirmId(null);
+
+  // real delete + toasts + refetch
+  const doDelete = async () => {
+    if (!confirmId) return;
+    try {
+      setDeletingId(confirmId);
+      await api.delete(`/visitors/${confirmId}`);
+      setToast({ type: 'success', msg: 'Visitor deleted.' });
+      setConfirmId(null);
+      await load();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message || 'Failed to delete visitor.';
+      setToast({ type: 'error', msg });
+    } finally {
+      setDeletingId(null);
+    }
   };
+
+  // auto hide toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2200);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -76,6 +94,18 @@ export default function VisitorsList() {
       {flash && (
         <div className="mb-4 bg-green-50 border border-green-300 text-green-800 px-3 py-2 rounded">
           {flash}
+        </div>
+      )}
+
+      {toast && (
+        <div
+          className={`mb-4 px-3 py-2 rounded border ${
+            toast.type === 'success'
+              ? 'bg-green-50 border-green-300 text-green-800'
+              : 'bg-red-50 border-red-300 text-red-800'
+          }`}
+        >
+          {toast.msg}
         </div>
       )}
 
@@ -106,6 +136,7 @@ export default function VisitorsList() {
             <tbody>
               {table.map((v) => {
                 const id = v._id ?? v.id ?? v.uuid;
+                const isDel = deletingId === id;
                 return (
                   <tr key={id} className="border-t">
                     <td className="px-4 py-2">
@@ -144,9 +175,11 @@ export default function VisitorsList() {
                         <button
                           type="button"
                           onClick={() => askDelete(id)}
-                          className="text-red-600 hover:underline"
+                          disabled={isDel}
+                          className={`text-red-600 hover:underline ${isDel ? 'opacity-50' : ''}`}
+                          title="Delete"
                         >
-                          Delete
+                          {isDel ? 'Deleting…' : 'Delete'}
                         </button>
                       </div>
                     </td>
@@ -158,7 +191,6 @@ export default function VisitorsList() {
         </div>
       )}
 
-      {/* VM-11.1: confirm modal only */}
       {confirmId && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded shadow p-6 w-[90%] max-w-md">
@@ -166,7 +198,7 @@ export default function VisitorsList() {
             <p className="mb-4 text-sm text-gray-600">This action cannot be undone.</p>
             <div className="flex justify-end gap-3">
               <button onClick={closeConfirm} className="px-4 py-2 border rounded">Cancel</button>
-              <button onClick={confirmDeleteNow} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">
+              <button onClick={doDelete} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">
                 Confirm delete
               </button>
             </div>
