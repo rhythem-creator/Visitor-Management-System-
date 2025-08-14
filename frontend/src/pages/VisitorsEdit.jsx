@@ -1,22 +1,23 @@
-// src/pages/VisitorEdit.jsx
+// frontend/src/pages/VisitorsEdit.jsx
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../api/axiosConfig';
 
 const initial = { name: '', phone: '', purpose: '', host: '', checkIn: '', status: 'In' };
 
-export default function VisitorEdit() {
+export default function VisitorsEdit() {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
-  const fromList = location.state?.visitor;
+  const location = useLocation();
+  const fromList = location.state?.visitor || null;
 
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(!fromList);
+  const [submitting, setSubmitting] = useState(false);
 
-  
+  // Prefill from list (no fetch), else fetch
   useEffect(() => {
     if (fromList) {
       setForm({
@@ -25,30 +26,39 @@ export default function VisitorEdit() {
         purpose: fromList.purpose ?? '',
         host: fromList.host ?? '',
         checkIn: fromList.checkIn ? new Date(fromList.checkIn).toISOString().slice(0, 16) : '',
-        status: fromList.status ?? 'In',
+        status: fromList.status === 'Out' ? 'Out' : 'In',
       });
+      setApiError('');       // ensure no banner
+      setLoading(false);
       return;
     }
 
     let alive = true;
     (async () => {
       try {
-        const { data } = await api.get(`/visitors/${id}`); 
+        const { data } = await api.get(`/visitors/${id}`);
         if (!alive) return;
         setForm({
-          name: data.name ?? '',
-          phone: data.phone ?? '',
-          purpose: data.purpose ?? '',
-          host: data.host ?? '',
-          checkIn: data.checkIn ? new Date(data.checkIn).toISOString().slice(0, 16) : '',
-          status: data.status ?? 'In',
+          name: data?.name ?? '',
+          phone: data?.phone ?? '',
+          purpose: data?.purpose ?? '',
+          host: data?.host ?? '',
+          checkIn: data?.checkIn ? new Date(data.checkIn).toISOString().slice(0, 16) : '',
+          status: data?.status === 'Out' ? 'Out' : 'In',
         });
-      } catch {
-       
+        setApiError('');
+      } catch (err) {
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          'Failed to fetch visitor.';
+        setApiError(msg);
       } finally {
         if (alive) setLoading(false);
       }
     })();
+
     return () => { alive = false; };
   }, [fromList, id]);
 
@@ -65,7 +75,7 @@ export default function VisitorEdit() {
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required';
-    else if (!/^[^\p{L}\-'.\s]*[\p{L}\-'.\s]{2,}$/u.test(form.name.trim())) e.name = 'Please enter a valid name';
+    else if (!/^[^\p{L}_.-]*\p{L}[\p{L} .'-]{1,}$/u.test(form.name.trim())) e.name = 'Please enter a valid name';
 
     if (!form.phone.trim()) e.phone = 'Phone is required';
     else if (!/^\d{10,15}$/.test(form.phone)) e.phone = 'Phone must be 10–15 digits';
@@ -77,7 +87,6 @@ export default function VisitorEdit() {
       const dt = new Date(form.checkIn);
       if (Number.isNaN(dt.getTime())) e.checkIn = 'Invalid date/time';
     }
-
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -88,6 +97,7 @@ export default function VisitorEdit() {
     if (!validate()) return;
 
     try {
+      setSubmitting(true);
       const payload = {
         name: form.name.trim(),
         phone: form.phone.trim(),
@@ -97,32 +107,40 @@ export default function VisitorEdit() {
         status: form.status,
       };
       await api.put(`/visitors/${id}`, payload);
-      navigate('/visitors');
+
+      navigate('/visitors', {
+        replace: true,
+        state: { flash: 'Visitor updated successfully.' },
+      });
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
-        err?.message || 'Failed to update visitor.';
+        err?.message ||
+        'Failed to update visitor.';
       setApiError(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="max-w-xl mx-auto p-6 text-gray-600">Loading…</div>;
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-4">Edit Visitor</h1>
+        <div className="text-gray-600">Loading…</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-6">
+    <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Edit Visitor</h1>
 
       {apiError && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
+        <div className="mb-4 bg-red-50 border border-red-300 text-red-800 px-3 py-2 rounded">
           {apiError}
         </div>
-      )}
-
-      {!fromList && (
-        <p className="mb-4 text-sm text-gray-500">
-          Tip: open edit from the Visitors list to auto‑fill fields.
-        </p>
       )}
 
       <form onSubmit={onSubmit} className="bg-white p-6 shadow rounded">
@@ -134,6 +152,7 @@ export default function VisitorEdit() {
             onChange={onChange}
             className={`w-full p-2 border rounded ${errors.name ? 'border-red-400' : ''}`}
             placeholder="Full name"
+            aria-invalid={Boolean(errors.name)}
           />
           {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
         </label>
@@ -148,6 +167,7 @@ export default function VisitorEdit() {
             pattern="\d*"
             className={`w-full p-2 border rounded ${errors.phone ? 'border-red-400' : ''}`}
             placeholder="e.g. 0412345678"
+            aria-invalid={Boolean(errors.phone)}
           />
           {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
         </label>
@@ -159,6 +179,7 @@ export default function VisitorEdit() {
             value={form.purpose}
             onChange={onChange}
             className={`w-full p-2 border rounded ${errors.purpose ? 'border-red-400' : ''}`}
+            aria-invalid={Boolean(errors.purpose)}
           />
           {errors.purpose && <p className="text-red-600 text-sm mt-1">{errors.purpose}</p>}
         </label>
@@ -170,6 +191,7 @@ export default function VisitorEdit() {
             value={form.host}
             onChange={onChange}
             className={`w-full p-2 border rounded ${errors.host ? 'border-red-400' : ''}`}
+            aria-invalid={Boolean(errors.host)}
           />
           {errors.host && <p className="text-red-600 text-sm mt-1">{errors.host}</p>}
         </label>
@@ -182,28 +204,33 @@ export default function VisitorEdit() {
             value={form.checkIn}
             onChange={onChange}
             className={`w-full p-2 border rounded ${errors.checkIn ? 'border-red-400' : ''}`}
+            aria-invalid={Boolean(errors.checkIn)}
           />
           {errors.checkIn && <p className="text-red-600 text-sm mt-1">{errors.checkIn}</p>}
         </label>
 
-        <div className="flex items-center gap-6 mb-6">
+        <div className="flex items-center gap-6 mb-4">
           <label className="flex items-center gap-2">
-            <input type="radio" name="status" value="In"
-                   checked={form.status === 'In'} onChange={onChange}/>
+            <input type="radio" name="status" value="In" checked={form.status === 'In'} onChange={onChange}/>
             In
           </label>
           <label className="flex items-center gap-2">
-            <input type="radio" name="status" value="Out"
-                   checked={form.status === 'Out'} onChange={onChange}/>
+            <input type="radio" name="status" value="Out" checked={form.status === 'Out'} onChange={onChange}/>
             Out
           </label>
         </div>
 
         <div className="flex gap-3">
-          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-            Save Changes
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`px-4 py-2 rounded text-white ${submitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+          >
+            {submitting ? 'Saving…' : 'Save Changes'}
           </button>
-          <Link to="/visitors" className="px-4 py-2 border rounded">Cancel</Link>
+          <Link to="/visitors" className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50">
+            Cancel
+          </Link>
         </div>
       </form>
     </div>
