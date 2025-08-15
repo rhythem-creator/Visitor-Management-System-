@@ -1,5 +1,6 @@
 // src/pages/VisitorsAdd.jsx
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 
 const initial = { name: '', phone: '', purpose: '', host: '', checkIn: '', status: 'In' };
@@ -10,35 +11,26 @@ export default function VisitorsAdd() {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
 
-  // keep your onChange behavior (digits only for phone)
   const onChange = (e) => {
     const { name, value } = e.target;
     if (name === 'phone') {
       const digits = value.replace(/\D/g, '').slice(0, 15);
       setForm((f) => ({ ...f, phone: digits }));
-      return;
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
     }
-    setForm((f) => ({ ...f, [name]: value }));
   };
 
-  // your original validation (name, phone 10–15, purpose, host, optional valid checkIn)
   const validate = () => {
     const e = {};
-
-    // Name: at least 2 letters, letters/spaces/.-'
-    if (!form.name.trim()) {
-      e.name = 'Name is required';
-    } else if (!/^[^\p{L}\s'.-]*[\p{L}\s'.-]{2,}$/u.test(form.name.trim())) {
+    if (!form.name.trim()) e.name = 'Name is required';
+    else if (!/^[^\p{L}\s'.-]*[\p{L}\s'.-]{2,}$/u.test(form.name.trim()))
       e.name = 'Please enter a valid name';
-    }
 
-    // Phone: 10–15 digits
-    if (!form.phone.trim()) {
-      e.phone = 'Phone is required';
-    } else if (!/^\d{10,15}$/.test(form.phone)) {
-      e.phone = 'Phone must be 10–15 digits';
-    }
+    if (!form.phone.trim()) e.phone = 'Phone is required';
+    else if (!/^\d{10,15}$/.test(form.phone)) e.phone = 'Phone must be 10–15 digits';
 
     if (!form.purpose.trim()) e.purpose = 'Purpose is required';
     if (!form.host.trim()) e.host = 'Host is required';
@@ -61,9 +53,14 @@ export default function VisitorsAdd() {
     try {
       setSubmitting(true);
       await api.post('/visitors', form);
-      setSuccess('Visitor created successfully.');
-      setForm(initial);
-      setErrors({});
+
+      // Option A: redirect immediately
+      navigate('/visitors', { replace: true });
+
+      // Option B (if you want a brief success flash first):
+      // setSuccess('Visitor created successfully.');
+      // setTimeout(() => navigate('/visitors', { replace: true }), 800);
+
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -71,7 +68,6 @@ export default function VisitorsAdd() {
         err?.message ||
         'Failed to create visitor.';
       setApiError(msg);
-    } finally {
       setSubmitting(false);
     }
   };
@@ -96,7 +92,6 @@ export default function VisitorsAdd() {
       )}
 
       <form onSubmit={onSubmit} className="bg-white p-6 shadow rounded">
-        {/* Name */}
         <label className="block mb-3">
           <span className="block mb-1">Name</span>
           <input
@@ -109,7 +104,6 @@ export default function VisitorsAdd() {
           {errors.name && <p className={errText}>{errors.name}</p>}
         </label>
 
-        {/* Phone */}
         <label className="block mb-3">
           <span className="block mb-1">Phone</span>
           <input
@@ -124,7 +118,6 @@ export default function VisitorsAdd() {
           {errors.phone && <p className={errText}>{errors.phone}</p>}
         </label>
 
-        {/* Purpose */}
         <label className="block mb-3">
           <span className="block mb-1">Purpose</span>
           <input
@@ -136,7 +129,6 @@ export default function VisitorsAdd() {
           {errors.purpose && <p className={errText}>{errors.purpose}</p>}
         </label>
 
-        {/* Host */}
         <label className="block mb-3">
           <span className="block mb-1">Host</span>
           <input
@@ -148,9 +140,8 @@ export default function VisitorsAdd() {
           {errors.host && <p className={errText}>{errors.host}</p>}
         </label>
 
-        {/* Check-in (optional) */}
         <label className="block mb-4">
-          <span className="block mb-1">Check‑in (optional)</span>
+          <span className="block mb-1">Check-in (optional)</span>
           <input
             type="datetime-local"
             name="checkIn"
@@ -161,7 +152,6 @@ export default function VisitorsAdd() {
           {errors.checkIn && <p className={errText}>{errors.checkIn}</p>}
         </label>
 
-        {/* Status radio */}
         <div className="flex items-center gap-6 mb-4">
           <label className="flex items-center gap-2">
             <input
@@ -188,7 +178,9 @@ export default function VisitorsAdd() {
         <button
           type="submit"
           disabled={submitting}
-          className={`w-full p-2 rounded text-white ${submitting ? 'bg-blue-400' : 'bg-blue-600'}`}
+          className={`w-full p-2 rounded text-white ${
+            submitting ? 'bg-blue-400' : 'bg-blue-600'
+          }`}
         >
           {submitting ? 'Creating…' : 'Create Visitor'}
         </button>
