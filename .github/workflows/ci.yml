@@ -23,7 +23,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      # Optional sanity check
       - name: Print CI context
         run: |
           node -v
@@ -56,6 +55,12 @@ jobs:
           yarn install
           yarn run build
 
+      # Deploy frontend build to Nginx
+      - name: Deploy frontend build to Nginx
+        run: |
+          sudo mkdir -p /var/www/frontend
+          sudo cp -r frontend/build/* /var/www/frontend/
+
       # Create .env for production
       - name: Create .env for production
         working-directory: ./backend
@@ -79,3 +84,7 @@ jobs:
           pm2 delete backend || true
           pm2 start "npm run start" --name "backend"
           pm2 save
+
+      # Reload Nginx
+      - name: Reload Nginx
+        run: sudo systemctl reload nginx
