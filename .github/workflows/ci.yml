@@ -2,7 +2,8 @@ name: Backend CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -15,7 +16,7 @@ jobs:
         node-version: [22]
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -23,7 +24,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Print CI context (sanity)
+      # (Optional) sanity print – keep it non-secret
+      - name: Print CI context
         run: |
           node -v
           npm -v
@@ -32,20 +34,22 @@ jobs:
       - name: Stop running services in AWS (PM2)
         run: pm2 stop all || true
 
-      # ---- Backend ----
-      - name: Install backend deps (npm ci)
+      # --- Backend ---
+      - name: Install backend deps (npm install)
         working-directory: ./backend
-        run: npm ci
+        run: |
+          npm install
 
       - name: Run backend tests
-        working-directory: ./backend
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           PORT: ${{ secrets.PORT }}
-        run: npm test
+        working-directory: ./backend
+        run: |
+          npm test
 
-      # ---- Frontend ----
+      # --- Frontend ---
       - name: Install frontend deps and build (yarn)
         working-directory: ./frontend
         run: |
@@ -55,23 +59,27 @@ jobs:
           yarn install
           yarn run build
 
-      # ---- Write .env for production (prefer PROD if present) ----
-      - name: Create backend .env for production
+      # --- Prepare .env for production from single PROD secret ---
+      - name: Create .env from PROD secret (optional block)
+        if: ${{ secrets.PROD != '' }}
         working-directory: ./backend
         run: |
-          if [ -n "${{ secrets.PROD }}" ]; then
-            echo "${{ secrets.PROD }}" > .env
-          else
-            cat > .env <<'EOF'
-            MONGO_URI=${{ secrets.MONGO_URI }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            PORT=${{ secrets.PORT }}
-            EOF
-          fi
-          echo ".env written:"
-          sed 's/=./=*hidden** /' .env || true
+          echo "${{ secrets.PROD }}" > .env
+          echo ".env written"
 
-      # ---- Start / restart app under PM2 ----
+      # Or write individual secrets into .env (if not using PROD)
+      - name: Create .env from individual secrets (fallback)
+        if: ${{ secrets.PROD == '' }}
+        working-directory: ./backend
+        run: |
+          cat > .env <<EOF
+          MONGO_URI=${{ secrets.MONGO_URI }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          PORT=${{ secrets.PORT }}
+          EOF
+          echo ".env written"
+
+      # --- Start / restart app under PM2 ---
       - name: Start/Restart PM2
         working-directory: ./backend
         run: |
