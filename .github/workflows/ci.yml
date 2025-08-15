@@ -1,4 +1,4 @@
-name: Backend CI
+name: Backend + Frontend CI
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Run Tests + Build + PM2 restart
+  deploy:
+    name: Deploy Backend + Frontend
     runs-on: self-hosted
     strategy:
       matrix:
@@ -33,7 +33,7 @@ jobs:
         run: pm2 stop all || true
 
       # Backend install
-      - name: Install backend deps (npm install)
+      - name: Install backend deps
         working-directory: ./backend
         run: npm install
 
@@ -46,20 +46,20 @@ jobs:
         run: npm test
 
       # Frontend install & build
-      - name: Install frontend deps and build (yarn)
+      - name: Install frontend deps and build
         working-directory: ./frontend
         run: |
-          sudo rm -rf ./build || true
+          rm -rf build || true
           npm install --global yarn
-          yarn --version
           yarn install
           yarn run build
 
-      # Deploy frontend build to Nginx
-      - name: Deploy frontend build to Nginx
+      # Deploy frontend build to Nginx folder
+      - name: Deploy frontend to Nginx
         run: |
           sudo mkdir -p /var/www/frontend
-          sudo cp -r frontend/build/* /var/www/frontend/
+          sudo rm -rf /var/www/frontend/*
+          sudo cp -r ./frontend/build/* /var/www/frontend/
 
       # Create .env for production
       - name: Create .env for production
@@ -69,22 +69,20 @@ jobs:
         run: |
           if [ -n "${PROD}" ]; then
             echo "${PROD}" > .env
-            echo ".env created from PROD secret"
           else
             echo "MONGO_URI=${{ secrets.MONGO_URI }}" > .env
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             echo "PORT=${{ secrets.PORT }}" >> .env
-            echo ".env created from individual secrets"
           fi
 
-      # Start / restart PM2
-      - name: Start/Restart PM2
+      # Start / restart PM2 for backend
+      - name: Start/Restart PM2 Backend
         working-directory: ./backend
         run: |
           pm2 delete backend || true
           pm2 start "npm run start" --name "backend"
           pm2 save
 
-      # Reload Nginx
+      # Reload Nginx to serve updated frontend
       - name: Reload Nginx
         run: sudo systemctl reload nginx
