@@ -2,14 +2,14 @@ name: Backend CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   test:
     name: Run Tests + Build + PM2 restart
     runs-on: self-hosted
-
     strategy:
       matrix:
         node-version: [22]
@@ -23,7 +23,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Print CI context (sanity)
+      # Optional sanity check
+      - name: Print CI context
         run: |
           node -v
           npm -v
@@ -32,31 +33,31 @@ jobs:
       - name: Stop running services in AWS (PM2)
         run: pm2 stop all || true
 
-      # --- Backend ---
-      - name: Install backend deps
+      # Backend install
+      - name: Install backend deps (npm install)
         working-directory: ./backend
         run: npm install
 
       - name: Run backend tests
-        working-directory: ./backend
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           PORT: ${{ secrets.PORT }}
+        working-directory: ./backend
         run: npm test
 
-      # --- Frontend ---
-      - name: Install frontend deps and build
+      # Frontend install & build
+      - name: Install frontend deps and build (yarn)
         working-directory: ./frontend
         run: |
-          rm -rf ./build || true
+          sudo rm -rf ./build || true
           npm install --global yarn
           yarn --version
           yarn install
           yarn run build
 
-      # --- Create backend .env (prefer single PROD secret if present) ---
-      - name: Create .env (use PROD if set)
+      # Create .env for production
+      - name: Create .env for production
         working-directory: ./backend
         env:
           PROD: ${{ secrets.PROD }}
@@ -65,18 +66,14 @@ jobs:
             echo "${PROD}" > .env
             echo ".env created from PROD secret"
           else
-            cat > .env <<'EOF'
-            MONGO_URI=${{ secrets.MONGO_URI }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            PORT=${{ secrets.PORT }}
-            EOF
+            echo "MONGO_URI=${{ secrets.MONGO_URI }}" > .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+            echo "PORT=${{ secrets.PORT }}" >> .env
             echo ".env created from individual secrets"
           fi
-          echo "----- .env preview (keys only) -----"
-          sed -E 's/=.*/=<redacted>/' .env || true
 
-      # --- PM2 start/restart ---
-      - name: Start / Restart PM2
+      # Start / restart PM2
+      - name: Start/Restart PM2
         working-directory: ./backend
         run: |
           pm2 delete backend || true
