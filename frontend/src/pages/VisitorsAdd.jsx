@@ -18,9 +18,9 @@ export default function VisitorsAdd() {
     if (name === 'phone') {
       const digits = value.replace(/\D/g, '').slice(0, 15);
       setForm((f) => ({ ...f, phone: digits }));
-    } else {
-      setForm((f) => ({ ...f, [name]: value }));
+      return;
     }
+    setForm((f) => ({ ...f, [name]: value }));
   };
 
   const validate = () => {
@@ -39,7 +39,6 @@ export default function VisitorsAdd() {
       const dt = new Date(form.checkIn);
       if (Number.isNaN(dt.getTime())) e.checkIn = 'Invalid date/time';
     }
-
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -52,15 +51,20 @@ export default function VisitorsAdd() {
 
     try {
       setSubmitting(true);
-      await api.post('/visitors', form);
 
-      // Option A: redirect immediately
-      navigate('/visitors', { replace: true });
+      const res = await api.post('/visitors', form);
+      // treat any non-2xx as failure
+      if (res.status < 200 || res.status >= 300) {
+        throw new Error(`Unexpected status ${res.status}`);
+      }
 
-      // Option B (if you want a brief success flash first):
-      // setSuccess('Visitor created successfully.');
-      // setTimeout(() => navigate('/visitors', { replace: true }), 800);
+      setSuccess('Visitor created successfully.');
+      // tiny delay so the banner is visible, then redirect
+      setTimeout(() => navigate('/visitors', { replace: true }), 900);
 
+      // optional: reset fields (doesn’t interfere with redirect)
+      setForm(initial);
+      setErrors({});
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -68,6 +72,7 @@ export default function VisitorsAdd() {
         err?.message ||
         'Failed to create visitor.';
       setApiError(msg);
+    } finally {
       setSubmitting(false);
     }
   };
