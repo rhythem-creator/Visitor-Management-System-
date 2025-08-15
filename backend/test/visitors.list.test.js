@@ -1,15 +1,9 @@
 const { expect } = require('chai');
-const sinon = require('sinon');
 const mongoose = require('mongoose');
+const { makeRes, sinon } = require('./_helpers');
+
 const { getVisitors } = require('../controllers/visitorController');
 const Visitor = require('../models/Visitor');
-
-function makeRes() {
-  const res = {};
-  res.status = sinon.stub().returns(res);
-  res.json = sinon.spy();
-  return res;
-}
 
 describe('VM-5 getVisitors', () => {
   afterEach(() => sinon.restore());
@@ -20,7 +14,9 @@ describe('VM-5 getVisitors', () => {
     const res = makeRes();
 
     const fakeVisitors = [{ name: 'Alice' }];
-    sinon.stub(Visitor, 'find').returns({ sort: sinon.stub().returns(fakeVisitors) });
+    sinon.stub(Visitor, 'find').returns({
+      sort: sinon.stub().returns(fakeVisitors)
+    });
 
     await getVisitors(req, res);
 
