@@ -89,7 +89,7 @@ const deleteVisitor = async (req, res) => {
   }
 
   try {
-    // If you want strict ownership, filter by both _id and userId
+    
     const filter = req.user ? { _id: id, userId: req.user.id } : { _id: id };
     const deleted = await Visitor.findOneAndDelete(filter);
 
