@@ -32,7 +32,7 @@ jobs:
       - name: Stop running services in AWS (PM2)
         run: pm2 stop all || true
 
-      # Backend install
+      # Backend installation
       - name: Install backend deps
         working-directory: ./backend
         run: npm install
@@ -54,14 +54,14 @@ jobs:
           yarn install
           yarn run build
 
-      # This part deploys frontend build to Nginx folder
+      # Deploy frontend build to Nginx folder
       - name: Deploy frontend to Nginx
         run: |
           sudo mkdir -p /var/www/frontend
           sudo rm -rf /var/www/frontend/*
           sudo cp -r ./frontend/build/* /var/www/frontend/
 
-      # This part create .env for production
+      # Create .env for production (backend)
       - name: Create .env for production
         working-directory: ./backend
         env:
@@ -75,7 +75,7 @@ jobs:
             echo "PORT=${{ secrets.PORT }}" >> .env
           fi
 
-      # Start / restart PM2 for backend
+      # Start / Restart PM2 for backend
       - name: Start/Restart PM2 Backend
         working-directory: ./backend
         run: |
@@ -83,9 +83,9 @@ jobs:
           pm2 start "npm run start" --name "backend"
           pm2 save
 
-      # Configure Nginx symlink + reload
-      - name: Configure & Reload Nginx
-        run: |
-          sudo ln -sf /etc/nginx/sites-available/vms.conf /etc/nginx/sites-enabled/vms.conf
-          sudo nginx -t
-          sudo systemctl reload nginx
+      # Validate and reload Nginx (symlink is already set up once)
+      - name: Validate Nginx config
+        run: sudo nginx -t
+
+      - name: Reload Nginx
+        run: sudo systemctl reload nginx
