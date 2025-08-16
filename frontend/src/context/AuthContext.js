@@ -1,4 +1,4 @@
-// src/context/AuthContext.js
+// frontend/src/context/AuthContext.js
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../api/axiosConfig';
 
@@ -8,33 +8,27 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
 
-  // Rehydrate session on first mount
+  // Rehydrate once on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem('user');
       if (saved) setUser(JSON.parse(saved));
-    } catch (_) {
-      // ignore bad JSON
-    } finally {
-      setReady(true); // render app only after we check storage
-    }
+    } catch {}
+    setReady(true);
   }, []);
 
+  // Centralized login used by pages
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
-    // shape a predictable user object
-    const packed = {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      token: data.token,
-    };
+    // Normalize user object
+    const packed = { id: data.id, name: data.name, email: data.email, token: data.token };
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(packed));
     setUser(packed);
     return packed;
   };
 
+  // Optional: used by Register page
   const register = async (name, email, password) => {
     const { data } = await api.post('/auth/register', { name, email, password });
     return data;
@@ -46,7 +40,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  if (!ready) return null; // prevent PrivateRoute from flashing before we load
+  if (!ready) return null; // avoid flash before we know auth state
 
   return (
     <AuthContext.Provider value={{ user, isAuthed: !!user?.token, login, register, logout }}>

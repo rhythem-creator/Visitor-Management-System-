@@ -1,23 +1,22 @@
-// src/pages/Login.jsx
-import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+// frontend/src/pages/Login.jsx
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
-  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();              // <-- use context
 
   const onSubmit = async (e) => {
     e.preventDefault();
     try {
-      await login(form.email, form.password);
-
-      // go back to the page the guard blocked, else default to /visitors/new
+      await login(form.email, form.password); // <- no direct axios, no localStorage here
       const redirectTo = location.state?.from?.pathname || '/visitors/new';
       navigate(redirectTo, { replace: true });
-    } catch {
+    } catch (err) {
+      console.error(err);
       alert('Login failed. Please try again.');
     }
   };
@@ -40,17 +39,12 @@ export default function Login() {
           placeholder="Password"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
+          className="w-full mb-6 p-2 border rounded"
         />
 
         <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
           Login
         </button>
-
-        <p className="text-center mt-4">
-          Don’t have an account?{' '}
-          <Link className="text-blue-600" to="/register">Register here</Link>
-        </p>
       </form>
     </div>
   );
