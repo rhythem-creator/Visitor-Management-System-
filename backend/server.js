@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 
 /* ---------- CORS (allow your deployed site + local dev) ---------- */
-const EC2_IP = '16.176.11.91'; // <-- put YOUR public IP here
+const EC2_IP = '3.107.202.99'; // <-- put YOUR public IP here
 const allowedOrigins = new Set([
   `http://${EC2_IP}`,   // Nginx (80)
   `http://${EC2_IP}:80`,
