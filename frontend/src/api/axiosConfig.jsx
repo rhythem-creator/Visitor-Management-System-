@@ -1,20 +1,26 @@
 // frontend/src/api/axiosConfig.jsx
 import axios from "axios";
 
-const api = axios.create({
+// Read base from env; always end with a trailing slash.
+const BASE =
+  (process.env.REACT_APP_API_BASE || "http://localhost:5001/api").replace(/\/?$/, "/");
 
-  baseURL: "http://3.107.202.99:5001/api/", //  backend base (Update server + axios baseURL)
+const api = axios.create({
+  baseURL: BASE,
   timeout: 10000,
+  withCredentials: true,
 });
 
-// attach token if present
+// Attach token if present
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
-// if auth fails, you can redirect to login
+// Handle 401 → force login
 api.interceptors.response.use(
   (res) => res,
   (err) => {
