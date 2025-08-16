@@ -83,6 +83,9 @@ jobs:
           pm2 start "npm run start" --name "backend"
           pm2 save
 
-      # Reload Nginx to serve updated frontend
-      - name: Reload Nginx
-        run: sudo systemctl reload nginx
+      # Configure Nginx symlink + reload
+      - name: Configure & Reload Nginx
+        run: |
+          sudo ln -sf /etc/nginx/sites-available/vms.conf /etc/nginx/sites-enabled/vms.conf
+          sudo nginx -t
+          sudo systemctl reload nginx
