@@ -54,14 +54,14 @@ jobs:
           yarn install
           yarn run build
 
-      # Deploy frontend build to Nginx folder
+      # This part deploys frontend build to Nginx folder
       - name: Deploy frontend to Nginx
         run: |
           sudo mkdir -p /var/www/frontend
           sudo rm -rf /var/www/frontend/*
           sudo cp -r ./frontend/build/* /var/www/frontend/
 
-      # Create .env for production
+      # This part create .env for production
       - name: Create .env for production
         working-directory: ./backend
         env:
