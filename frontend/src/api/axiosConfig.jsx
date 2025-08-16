@@ -3,7 +3,7 @@ import axios from "axios";
 
 const api = axios.create({
 
-  baseURL: "http://16.176.11.91:5001/api/", // your backend base (Update server + axios baseURL)
+  baseURL: "http://3.107.202.99:5001/api/", //  backend base (Update server + axios baseURL)
   timeout: 10000,
 });
 
