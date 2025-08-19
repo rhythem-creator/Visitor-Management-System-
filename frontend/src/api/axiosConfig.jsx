@@ -1,9 +1,7 @@
 // frontend/src/api/axiosConfig.jsx
 import axios from "axios";
 
-// Read base from env; always end with a trailing slash.
-const BASE =
-  (process.env.REACT_APP_API_BASE || "http://localhost:5001/api").replace(/\/?$/, "/");
+const BASE = (process.env.REACT_APP_API_BASE || "/api/").replace(/\/?$/, "/");
 
 const api = axios.create({
   baseURL: BASE,
@@ -11,16 +9,12 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Attach token if present
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Handle 401 → force login
 api.interceptors.response.use(
   (res) => res,
   (err) => {
